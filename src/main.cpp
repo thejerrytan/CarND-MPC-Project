@@ -65,7 +65,9 @@ Eigen::VectorXd polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals,
   return result;
 }
 
+
 int main() {
+
   uWS::Hub h;
 
   // MPC is initialized here!
@@ -73,6 +75,15 @@ int main() {
 
   h.onMessage([&mpc](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
+    size_t N = 10;
+    size_t x_start = 0;
+    size_t y_start = x_start + N;
+    size_t psi_start = y_start + N;
+    size_t v_start = psi_start + N;
+    size_t cte_start = v_start + N;
+    size_t epsi_start = cte_start + N;
+    size_t delta_start = epsi_start + N;
+    size_t a_start = delta_start + N - 1;
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
@@ -91,6 +102,19 @@ int main() {
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
+          
+          // Transform x,y from map to vehicle coordinates
+          // This simplifies a lot of calculations because
+          // the fitted polynomial will start from 0,
+          // x, y and psi are all 0
+          // and the output from ipopt solver will be small
+          // (in the vehicle coordinates)
+          for (int i = 0; i < ptsy.size(); ++i) {
+            const double curr_x = ptsx[i] - px;
+            const double curr_y = ptsy[i] - py;
+            ptsx[i] = curr_x * cos(psi) + sin(psi) * curr_y;
+            ptsy[i] = -curr_x * sin(psi) + cos(psi) * curr_y;
+          }
 
           /*
           * TODO: Calculate steering angle and throttle using MPC.
@@ -98,18 +122,34 @@ int main() {
           * Both are in between [-1, 1].
           *
           */
+          Eigen::VectorXd state(6);
+          Eigen::Map<Eigen::VectorXd> ptsxV(ptsx.data(), ptsx.size());
+          Eigen::Map<Eigen::VectorXd> ptsyV(ptsy.data(), ptsy.size());
           double steer_value;
           double throttle_value;
+          auto coeffs = polyfit(ptsxV, ptsyV, 3); // 5 to have smooth trajectory to deal with sharp turns
+          double cte = polyeval(coeffs, 0);
+          double epsi = -atan(coeffs[1]); // Higher order terms goes to 0 when evaluated at x = 0
+          state << 0, 0, 0, v, cte, epsi;
+          auto soln = mpc.Solve(state, coeffs);
+          steer_value = soln[delta_start + 1];
+          throttle_value = soln[a_start + 1];
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
           // Otherwise the values will be in between [-deg2rad(25), deg2rad(25] instead of [-1, 1].
-          msgJson["steering_angle"] = steer_value;
+          msgJson["steering_angle"] = -1 * steer_value / deg2rad(25); // -1 to account for the different steering convention
           msgJson["throttle"] = throttle_value;
 
           //Display the MPC predicted trajectory 
           vector<double> mpc_x_vals;
           vector<double> mpc_y_vals;
+          for (int i = 0; i < N; ++i) {
+            const double vehicle_x = soln[x_start + i];
+            const double vehicle_y = soln[y_start + i];
+            mpc_x_vals.push_back(vehicle_x);
+            mpc_y_vals.push_back(vehicle_y);
+          }
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line
@@ -120,6 +160,11 @@ int main() {
           //Display the waypoints/reference line
           vector<double> next_x_vals;
           vector<double> next_y_vals;
+          for (int i = 0; i < 100; i += 3) {
+            const double vehicle_y = polyeval(coeffs, i);
+            next_x_vals.push_back(i);
+            next_y_vals.push_back(vehicle_y);
+          }
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
