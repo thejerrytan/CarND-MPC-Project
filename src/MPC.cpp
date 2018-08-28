@@ -6,8 +6,8 @@
 using CppAD::AD;
 
 // TODO: Set the timestep length and duration
-size_t N = 10;
-double dt = 0.10;
+size_t N = 20;
+double dt = 0.05;
 
 // This value assumes the model presented in the classroom is used.
 //
@@ -21,7 +21,7 @@ double dt = 0.10;
 // This is the length from front to CoG that has a similar radius.
 const double Lf = 2.67;
 
-double ref_v = 70;
+double ref_v = 110;
 
 // The solver takes all the state variables and actuator
 // variables in a singular vector. Thus, we should to establish
@@ -50,10 +50,12 @@ class FG_eval {
     fg[0] = 0;
     for (int i = 0; i < N; i++) {
       // Cost based on reference state
+      const double curvature = CppAD::atan(coeffs[1] + 2 * coeffs[2] * i + 3 * coeffs[3] * CppAD::pow(i, 2));
+      const double new_ref_v = ref_v * (1 - 2 * CppAD::fabs(curvature));
+      cout << "new ref_v " << new_ref_v << endl;
       fg[0] += CppAD::pow(vars[cte_start + i], 2);
-      fg[0] += CppAD::pow(vars[epsi_start + i], 2);
-      fg[0] += CppAD::pow(vars[v_start + i] - ref_v, 2);
-
+      fg[0] += 100 * CppAD::pow(vars[epsi_start + i], 2);
+      fg[0] += 100 * CppAD::pow(vars[v_start + i] - new_ref_v, 2);
     }
 
     for (int i = 0; i < N - 1; i++) {
@@ -146,6 +148,11 @@ CppAD::vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) 
   Dvector vars_lowerbound(n_vars);
   Dvector vars_upperbound(n_vars);
   // TODO: Set lower and upper limits for variables.
+  // velocity cannot be negative
+  for (int i = v_start; i < cte_start; ++i) {
+    vars_lowerbound[i] = 0;
+    vars_upperbound[i] = 1.0e19;
+  }
   // Set all non-actuators upper and lower limits to max negative and postive values
   for (int i = 0; i < delta_start; ++i) {
     vars_lowerbound[i] = -1.0e19;
