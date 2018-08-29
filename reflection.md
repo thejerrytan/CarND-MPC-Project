@@ -4,20 +4,23 @@
 
 The model I chose is the one taught in the lesson. Here are the state equations:
 
-$$x1 = x0 + v0 * sin(psi0) * dt$$
-$$y1 = y0 + v0 * cos(psi0) * dt$$
-$$psi1 = psi0 + v0/ Lf * delta0 * dt$$
-$$v1 = v0 + a0 * dt$$
-$$cte1 = cte0 + v0 * sin(espi0) * dt$$
-$$epsi1 = epsi0 + v0 * delta0 / Lf * dt$$
+```
+x1 = x0 + v0 * sin(psi0) * dt
+y1 = y0 + v0 * cos(psi0) * dt
+psi1 = psi0 + v0/ Lf * delta0 * dt
+v1 = v0 + a0 * dt
+cte1 = cte0 + v0 * sin(espi0) * dt
+epsi1 = epsi0 + v0 * delta0 / Lf * dt
+```
 
 Numeral 1 represents the state at time t+1 while 0 represents state at time t. x, y represents the location of the vehicle. I have chosen to work in vehicle coordinates, hence x0 and y0 will always be 0. psi is the orientation of the car relative to the x-axis, psi0 also always 0 by choice of coordinate system. dt is the time between t and t+1. cte is the cross-track error and is calculated as such:
-
-$$cte0 = f(x0) - y0$$
-
+```
+cte0 = f(x0) - y0
+```
 where f(x0) is the polynomial fitted to the waypoints, evalulated at x0. espi is the orientation error, the difference between actual orientation and desired orientation. It is calculated as such:
-
-$$epsi0 = psi0 - arctan(f'(x0))$$
+```
+epsi0 = psi0 - arctan(f'(x0))
+```
 
 where f'(x0) is the derivative of the fitted polynomial, evaluated at x0.
 
