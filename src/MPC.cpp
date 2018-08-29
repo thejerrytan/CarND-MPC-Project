@@ -52,7 +52,6 @@ class FG_eval {
       // Cost based on reference state
       const double curvature = CppAD::atan(coeffs[1] + 2 * coeffs[2] * i + 3 * coeffs[3] * CppAD::pow(i, 2));
       const double new_ref_v = ref_v * (1 - 2 * CppAD::fabs(curvature));
-      cout << "new ref_v " << new_ref_v << endl;
       fg[0] += CppAD::pow(vars[cte_start + i], 2);
       fg[0] += 100 * CppAD::pow(vars[epsi_start + i], 2);
       fg[0] += 100 * CppAD::pow(vars[v_start + i] - new_ref_v, 2);
